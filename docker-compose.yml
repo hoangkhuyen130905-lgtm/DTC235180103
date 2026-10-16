@@ -1,6 +1,6 @@
 version: '3.8'
 
-# Commit 1: Web App + Database (PostgreSQL) + pgAdmin + Nginx Reverse Proxy (HTTPS + Security Headers)
+# Commit 2: Tích hợp Prometheus + Grafana + cAdvisor + Exporters giám sát Container, Web, Database
 
 services:
   postgres:
@@ -77,6 +77,79 @@ services:
       - web
       - pgadmin
 
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: library_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - frontend_net
+      - backend_net
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: library_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-Secr3t_Grafana_2026}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+    networks:
+      - frontend_net
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: library_cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - frontend_net
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: library_postgres_exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-library_admin}:${POSTGRES_PASSWORD:-Secr3t_L1brary_P@ss2026}@postgres:5432/${POSTGRES_DB:-library_db}?sslmode=disable"
+    networks:
+      - backend_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: library_nginx_exporter
+    restart: unless-stopped
+    command:
+      - '-nginx.scrape-uri=http://nginx:80/stub_status'
+    networks:
+      - frontend_net
+    depends_on:
+      - nginx
+
 networks:
   frontend_net:
     driver: bridge
@@ -88,3 +161,5 @@ networks:
 volumes:
   postgres_data:
   pgadmin_data:
+  prometheus_data:
+  grafana_data:
