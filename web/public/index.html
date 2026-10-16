@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Thư Viện - Đề Tài 1</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <i class="bi bi-book-half me-2 fs-4"></i>
+                <span>ICTU Library System</span>
+            </a>
+            <span class="navbar-text text-white d-none d-md-block">
+                <i class="bi bi-mortarboard me-1"></i> Môn: Triển khai & Quản trị HTPM - <strong>Đề 1: Quản lý Thư viện</strong>
+            </span>
+            <div class="d-flex align-items-center">
+                <span class="badge bg-success me-2"><i class="bi bi-shield-lock-fill"></i> Nginx HTTPS</span>
+                <span class="badge bg-info text-dark"><i class="bi bi-database-check"></i> PostgreSQL</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="container-fluid px-4 py-4">
+
+        <!-- KPI Statistic Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card stat-card border-0 shadow-sm bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon bg-primary-subtle text-primary rounded-3 p-3 me-3">
+                            <i class="bi bi-journal-bookmark-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Tổng số sách</div>
+                            <div class="fs-3 fw-bold text-dark" id="statTotalBooks">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card stat-card border-0 shadow-sm bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon bg-info-subtle text-info rounded-3 p-3 me-3">
+                            <i class="bi bi-people-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Độc giả đăng ký</div>
+                            <div class="fs-3 fw-bold text-dark" id="statTotalReaders">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card stat-card border-0 shadow-sm bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon bg-warning-subtle text-warning rounded-3 p-3 me-3">
+                            <i class="bi bi-arrow-repeat fs-3"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Sách đang được mượn</div>
+                            <div class="fs-3 fw-bold text-dark" id="statActiveBorrows">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card stat-card border-0 shadow-sm bg-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="stat-icon bg-danger-subtle text-danger rounded-3 p-3 me-3">
+                            <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Lượt mượn quá hạn</div>
+                            <div class="fs-3 fw-bold text-danger" id="statOverdueBorrows">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills mb-3 border-bottom pb-2" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-semibold" id="books-tab" data-bs-toggle="tab" data-bs-target="#books-tab-pane" type="button" role="tab">
+                    <i class="bi bi-book me-1"></i> Danh Mục Sách
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="readers-tab" data-bs-toggle="tab" data-bs-target="#readers-tab-pane" type="button" role="tab">
+                    <i class="bi bi-person-lines-fill me-1"></i> Quản Lý Độc Giả
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="borrows-tab" data-bs-toggle="tab" data-bs-target="#borrows-tab-pane" type="button" role="tab">
+                    <i class="bi bi-arrow-left-right me-1"></i> Quản Lý Mượn / Trả
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-secondary" id="system-tab" data-bs-toggle="tab" data-bs-target="#system-tab-pane" type="button" role="tab">
+                    <i class="bi bi-gear-wide-connected me-1"></i> Quản Trị Hệ Thống (DevOps)
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="mainTabContent">
+            
+            <!-- TAB 1: QUẢN LÝ SÁCH -->
+            <div class="tab-pane fade show active" id="books-tab-pane" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-list-stars me-2"></i>Kho Sách Thư Viện</h5>
+                        <div class="d-flex gap-2">
+                            <div class="input-group input-group-sm" style="max-width: 280px;">
+                                <input type="text" id="searchBookInput" class="form-control" placeholder="Tìm tên sách, tác giả, ISBN...">
+                                <button class="btn btn-outline-secondary" type="button" onclick="loadBooks()"><i class="bi bi-search"></i></button>
+                            </div>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBookModal">
+                                <i class="bi bi-plus-circle me-1"></i> Thêm Sách Mới
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Tên Sách</th>
+                                        <th>Tác Giả</th>
+                                        <th>Thể Loại</th>
+                                        <th>ISBN</th>
+                                        <th>Năm XB</th>
+                                        <th>Tổng / Khả Dụng</th>
+                                        <th class="text-center">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="booksTableBody">
+                                    <tr><td colspan="8" class="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: QUẢN LÝ ĐỘC GIẢ -->
+            <div class="tab-pane fade" id="readers-tab-pane" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-person-badge me-2"></i>Danh Sách Độc Giả / Sinh Viên</h5>
+                        <div class="d-flex gap-2">
+                            <div class="input-group input-group-sm" style="max-width: 280px;">
+                                <input type="text" id="searchReaderInput" class="form-control" placeholder="Tìm theo tên, mã SV...">
+                                <button class="btn btn-outline-secondary" type="button" onclick="loadReaders()"><i class="bi bi-search"></i></button>
+                            </div>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addReaderModal">
+                                <i class="bi bi-person-plus me-1"></i> Thêm Độc Giả
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Mã Độc Giả</th>
+                                        <th>Họ Và Tên</th>
+                                        <th>Lớp</th>
+                                        <th>Email</th>
+                                        <th>Điện Thoại</th>
+                                        <th class="text-center">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="readersTableBody">
+                                    <tr><td colspan="7" class="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: QUẢN LÝ MƯỢN / TRẢ -->
+            <div class="tab-pane fade" id="borrows-tab-pane" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-card-checklist me-2"></i>Nhật Ký Mượn / Trả Sách</h5>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#borrowModal" onclick="prepareBorrowModal()">
+                            <i class="bi bi-plus-lg me-1"></i> Lập Phiếu Mượn Sách
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Mã Phiếu</th>
+                                        <th>Tên Sách</th>
+                                        <th>Người Mượn</th>
+                                        <th>Ngày Mượn</th>
+                                        <th>Hạn Trả</th>
+                                        <th>Trạng Thái</th>
+                                        <th>Ghi Chú</th>
+                                        <th class="text-center">Xử Lý</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="borrowsTableBody">
+                                    <tr><td colspan="8" class="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: THÔNG TIN HỆ THỐNG & DEVOPS -->
+            <div class="tab-pane fade" id="system-tab-pane" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold text-dark py-3">
+                                <i class="bi bi-hdd-network me-2 text-primary"></i>Liên Kết Quản Trị Hệ Thống
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group">
+                                    <a href="/pgadmin" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-database me-2 text-primary"></i>
+                                            <strong>pgAdmin 4 (Quản lý PostgreSQL)</strong>
+                                            <div class="small text-muted">Đăng nhập: admin@library.ictu.vn / Secr3t_PgAdmin_2026</div>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">Mở <i class="bi bi-box-arrow-up-right"></i></span>
+                                    </a>
+                                    <a href="http://localhost:3001" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-graph-up me-2 text-warning"></i>
+                                            <strong>Grafana Monitoring & Dashboards</strong>
+                                            <div class="small text-muted">Đăng nhập: admin / Secr3t_Grafana_2026</div>
+                                        </div>
+                                        <span class="badge bg-warning text-dark rounded-pill">Cổng 3001 <i class="bi bi-box-arrow-up-right"></i></span>
+                                    </a>
+                                    <a href="http://localhost:9090" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-activity me-2 text-danger"></i>
+                                            <strong>Prometheus Metric Server</strong>
+                                            <div class="small text-muted">Thu thập metrics: App, Container (cAdvisor), Nginx, PostgreSQL</div>
+                                        </div>
+                                        <span class="badge bg-danger rounded-pill">Cổng 9090 <i class="bi bi-box-arrow-up-right"></i></span>
+                                    </a>
+                                    <a href="/metrics" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-code-slash me-2 text-success"></i>
+                                            <strong>Ứng Dụng Metrics Endpoint</strong>
+                                            <div class="small text-muted">Xuất prometheus metric của Node.js App</div>
+                                        </div>
+                                        <span class="badge bg-success rounded-pill">/metrics <i class="bi bi-box-arrow-up-right"></i></span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold text-dark py-3">
+                                <i class="bi bi-terminal me-2 text-info"></i>Các Câu Lệnh Truy Vấn LogQL Mẫu (Loki)
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">Mở Grafana > mục <strong>Explore</strong> > chọn nguồn dữ liệu <strong>Loki</strong> và sử dụng các query sau:</p>
+                                
+                                <div class="mb-3">
+                                    <div class="fw-semibold small text-primary mb-1">1. Lọc tất cả log của Nginx Reverse Proxy:</div>
+                                    <code class="d-block bg-light p-2 rounded border small">{job="nginx"}</code>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="fw-semibold small text-primary mb-1">2. Lọc các request gặp mã lỗi HTTP (4xx hoặc 5xx):</div>
+                                    <code class="d-block bg-light p-2 rounded border small">{job="nginx"} |~ "HTTP/[0-9.]+ (4|5)[0-9]{2}"</code>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="fw-semibold small text-primary mb-1">3. Lọc log ứng dụng web có chứa keyword "borrow":</div>
+                                    <code class="d-block bg-light p-2 rounded border small">{job="library-web"} |= "borrow"</code>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="fw-semibold small text-primary mb-1">4. Tính tốc độ log per second theo thời gian:</div>
+                                    <code class="d-block bg-light p-2 rounded border small">rate({job="nginx"}[1m])</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL: THÊM SÁCH MỚI -->
+    <div class="modal fade" id="addBookModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="addBookForm" onsubmit="handleAddBook(event)">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Thêm Sách Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tên sách (*)</label>
+                            <input type="text" class="form-control" id="bookTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tác giả (*)</label>
+                            <input type="text" class="form-control" id="bookAuthor" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Thể loại (*)</label>
+                                <input type="text" class="form-control" id="bookCategory" placeholder="VD: CNTT, Kinh tế..." required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã ISBN</label>
+                                <input type="text" class="form-control" id="bookIsbn">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Số lượng sách</label>
+                                <input type="number" class="form-control" id="bookCopies" value="5" min="1" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Năm xuất bản</label>
+                                <input type="number" class="form-control" id="bookYear" value="2023">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary">Lưu Sách</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: THÊM ĐỘC GIẢ -->
+    <div class="modal fade" id="addReaderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="addReaderForm" onsubmit="handleAddReader(event)">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Thêm Độc Giả Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã độc giả / MSSV (*)</label>
+                                <input type="text" class="form-control" id="readerCode" placeholder="VD: SV230006" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Lớp sinh hoạt</label>
+                                <input type="text" class="form-control" id="readerClass" placeholder="VD: K23-HTPM01">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên (*)</label>
+                            <input type="text" class="form-control" id="readerFullName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="readerEmail" placeholder="sv@ictu.vn">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Số điện thoại</label>
+                                <input type="text" class="form-control" id="readerPhone">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary">Lưu Độc Giả</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LẬP PHIẾU MƯỢN SÁCH -->
+    <div class="modal fade" id="borrowModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="borrowForm" onsubmit="handleCreateBorrow(event)">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Lập Phiếu Mượn Sách</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Chọn Sách Mượn (*)</label>
+                            <select class="form-select" id="borrowBookSelect" required>
+                                <option value="">-- Chọn một cuốn sách --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Chọn Độc Giả (*)</label>
+                            <select class="form-select" id="borrowReaderSelect" required>
+                                <option value="">-- Chọn độc giả mượn --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hạn Trả Sách (*)</label>
+                            <input type="date" class="form-control" id="borrowDueDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ghi Chú</label>
+                            <textarea class="form-control" id="borrowNotes" rows="2" placeholder="Ví dụ: Phục vụ làm đề tài nghiên cứu"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-success">Xác Nhận Mượn Sách</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <div id="liveToast" class="toast align-items-center text-white bg-primary border-0 shadow" role="alert">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">Thông báo</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

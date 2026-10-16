@@ -1,0 +1,90 @@
+version: '3.8'
+
+# Commit 1: Web App + Database (PostgreSQL) + pgAdmin + Nginx Reverse Proxy (HTTPS + Security Headers)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: library_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-library_db}
+      POSTGRES_USER: ${POSTGRES_USER:-library_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Secr3t_L1brary_P@ss2026}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-library_admin} -d ${POSTGRES_DB:-library_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8.5
+    container_name: library_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@library.ictu.vn}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-Secr3t_PgAdmin_2026}
+      PGADMIN_CONFIG_STRICT_TRANSPORT_SECURITY_ENABLED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backend_net
+      - frontend_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: library_web
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-library_admin}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-Secr3t_L1brary_P@ss2026}
+      DB_NAME: ${POSTGRES_DB:-library_db}
+    networks:
+      - backend_net
+      - frontend_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: library_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - frontend_net
+    depends_on:
+      - web
+      - pgadmin
+
+networks:
+  frontend_net:
+    driver: bridge
+    name: library_frontend_net
+  backend_net:
+    driver: bridge
+    name: library_backend_net
+
+volumes:
+  postgres_data:
+  pgadmin_data:
