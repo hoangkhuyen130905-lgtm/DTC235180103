@@ -1,8 +1,15 @@
-version: '3.8'
+name: library_system
 
-# Commit 2: Tích hợp Prometheus + Grafana + cAdvisor + Exporters giám sát Container, Web, Database
+# ==============================================================================
+# HỆ THỐNG QUẢN LÝ THƯ VIỆN - ĐỒ ÁN TRIỂN KHAI & QUẢN TRỊ HỆ THỐNG PHẦN MỀM
+# Bao gồm: Web App (Node.js), PostgreSQL, pgAdmin, Nginx (HTTPS + Security Headers),
+#          Prometheus, Grafana, cAdvisor, Exporters, Loki và Promtail.
+# ==============================================================================
 
 services:
+  # ----------------------------------------------------------------------------
+  # 1. DATABASE: PostgreSQL 16
+  # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: library_postgres
@@ -14,6 +21,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # HARDENING: Không expose cổng ra máy chủ Host bên ngoài, chỉ giao tiếp nội bộ
     networks:
       - backend_net
     healthcheck:
@@ -21,7 +29,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
+  # ----------------------------------------------------------------------------
+  # 2. CÔNG CỤ QUẢN TRỊ CSDL: pgAdmin 4
+  # ----------------------------------------------------------------------------
   pgadmin:
     image: dpage/pgadmin4:8.5
     container_name: library_pgadmin
@@ -40,7 +56,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
+  # ----------------------------------------------------------------------------
+  # 3. ỨNG DỤNG WEB: Quản lý Thư viện (Node.js/Express)
+  # ----------------------------------------------------------------------------
   web:
     build:
       context: ./web
@@ -54,13 +78,23 @@ services:
       DB_USER: ${POSTGRES_USER:-library_admin}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-Secr3t_L1brary_P@ss2026}
       DB_NAME: ${POSTGRES_DB:-library_db}
+    volumes:
+      - app_logs:/var/log/app
     networks:
       - backend_net
       - frontend_net
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
+  # ----------------------------------------------------------------------------
+  # 4. REVERSE PROXY: Nginx (HTTPS tự ký + Security Headers)
+  # ----------------------------------------------------------------------------
   nginx:
     image: nginx:1.27-alpine
     container_name: library_nginx
@@ -71,12 +105,21 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
     networks:
       - frontend_net
     depends_on:
       - web
       - pgadmin
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
+  # ----------------------------------------------------------------------------
+  # 5. GIÁM SÁT: Prometheus Server
+  # ----------------------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.51.2
     container_name: library_prometheus
@@ -84,6 +127,8 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
@@ -92,7 +137,15 @@ services:
     networks:
       - frontend_net
       - backend_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
+  # ----------------------------------------------------------------------------
+  # 6. HIỂN THỊ TRỰC QUAN: Grafana Dashboard
+  # ----------------------------------------------------------------------------
   grafana:
     image: grafana/grafana:10.4.2
     container_name: library_grafana
@@ -107,12 +160,20 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - frontend_net
     depends_on:
       - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
+  # ----------------------------------------------------------------------------
+  # 7. EXPORTER CONTAINER: cAdvisor (Giám sát tài nguyên Containers)
+  # ----------------------------------------------------------------------------
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: library_cadvisor
@@ -126,7 +187,15 @@ services:
       - /dev/disk/:/dev/disk:ro
     networks:
       - frontend_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
+  # ----------------------------------------------------------------------------
+  # 8. EXPORTER DATABASE: PostgreSQL Exporter
+  # ----------------------------------------------------------------------------
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: library_postgres_exporter
@@ -138,7 +207,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
+  # ----------------------------------------------------------------------------
+  # 9. EXPORTER NGINX: Nginx Prometheus Exporter
+  # ----------------------------------------------------------------------------
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.1.0
     container_name: library_nginx_exporter
@@ -149,7 +226,58 @@ services:
       - frontend_net
     depends_on:
       - nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
+  # ----------------------------------------------------------------------------
+  # 10. LOG LƯU TRỮ: Loki (Centralized Logging)
+  # ----------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: library_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - frontend_net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  # ----------------------------------------------------------------------------
+  # 11. LOG COLLECTOR: Promtail
+  # ----------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: library_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - nginx_logs:/var/log/nginx:ro
+      - app_logs:/var/log/app:ro
+    networks:
+      - frontend_net
+    depends_on:
+      - loki
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+# ==============================================================================
+# PHÂN VÙNG MẠNG (NETWORK ISOLATION - HARDENING)
+# ==============================================================================
 networks:
   frontend_net:
     driver: bridge
@@ -158,8 +286,21 @@ networks:
     driver: bridge
     name: library_backend_net
 
+# ==============================================================================
+# LƯU TRỮ BỀN VỮNG (NAMED VOLUMES)
+# ==============================================================================
 volumes:
   postgres_data:
+    name: library_postgres_data
   pgadmin_data:
+    name: library_pgadmin_data
   prometheus_data:
+    name: library_prometheus_data
   grafana_data:
+    name: library_grafana_data
+  loki_data:
+    name: library_loki_data
+  nginx_logs:
+    name: library_nginx_logs
+  app_logs:
+    name: library_app_logs

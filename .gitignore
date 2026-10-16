@@ -14,5 +14,9 @@ loki_data/
 .DS_Store
 Thumbs.db
 
-# Secrets
+# Secrets & Local Reports
 .env
+BAO_CAO_THUC_HANH*
+docs/images/
+
+

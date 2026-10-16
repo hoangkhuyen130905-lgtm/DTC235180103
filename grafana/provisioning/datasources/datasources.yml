@@ -4,6 +4,7 @@ datasources:
   # Prometheus Datasource
   - name: Prometheus
     type: prometheus
+    uid: Prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
@@ -12,6 +13,8 @@ datasources:
   # Loki Datasource (Hệ thống Log tập trung)
   - name: Loki
     type: loki
+    uid: Loki
     access: proxy
     url: http://loki:3100
     editable: true
+

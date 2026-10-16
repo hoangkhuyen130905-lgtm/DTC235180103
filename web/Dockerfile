@@ -11,7 +11,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 
 # Cài đặt thư viện production và dọn dẹp cache npm
-RUN npm ci --only=production --ignore-scripts && npm cache clean --force
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # Copy toàn bộ mã nguồn ứng dụng
 COPY . .
@@ -32,3 +32,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 # Khởi chạy ứng dụng
 CMD ["node", "src/server.js"]
+

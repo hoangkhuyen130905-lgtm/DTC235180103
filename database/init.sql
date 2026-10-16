@@ -78,3 +78,4 @@ INSERT INTO borrows (book_id, reader_id, borrow_date, due_date, return_date, sta
 (3, 3, CURRENT_DATE - INTERVAL '20 days', CURRENT_DATE - INTERVAL '2 days', NULL, 'BORROWED', 'Quá hạn trả 2 ngày'),
 (4, 4, CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE - INTERVAL '12 days', 'RETURNED', 'Đã trả sách nguyên vẹn'),
 (5, 5, CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE + INTERVAL '7 days', NULL, 'BORROWED', 'Đang đọc chương 4');
+
